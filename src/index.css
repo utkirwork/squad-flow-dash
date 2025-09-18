@@ -44,6 +44,10 @@ All colors MUST be HSL.
     --status-completed: 142 100% 96%;
     --status-completed-foreground: 142 76% 36%;
 
+    /* Warning colors */
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+
     /* Dashboard specific */
     --dashboard-sidebar: 215 28% 17%;
     --dashboard-sidebar-foreground: 215 20% 65%;
@@ -93,6 +97,10 @@ All colors MUST be HSL.
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Warning colors for dark mode */
+    --warning: 31 81% 56%;
+    --warning-foreground: 48 96% 89%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;

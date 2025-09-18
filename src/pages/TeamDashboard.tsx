@@ -4,7 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { CalendarDays, Clock, Users, CheckCircle2, Circle, Timer } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CalendarDays, Clock, Users, CheckCircle2, Circle, Timer, BarChart3 } from 'lucide-react';
+import GanttChart from '@/components/GanttChart';
 
 import sarahAvatar from '@/assets/avatar-sarah.jpg';
 import mikeAvatar from '@/assets/avatar-mike.jpg';
@@ -184,6 +186,20 @@ const TeamDashboard = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tab Navigation */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team Overview
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Task Timeline
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-8">
         {/* Team Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
@@ -311,7 +327,13 @@ const TeamDashboard = () => {
               </Card>
             );
           })}
-        </div>
+          </div>
+          </TabsContent>
+
+          <TabsContent value="timeline">
+            <GanttChart teamData={teamData} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
