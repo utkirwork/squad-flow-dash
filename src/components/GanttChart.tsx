@@ -1,239 +1,187 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Timer, Circle, Calendar, CheckCircle2 } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
-interface Task {
+interface Activity {
   id: string;
   title: string;
-  status: 'todo' | 'progress' | 'completed';
-  dueDate: string;
-  project: string;
+  startWeek: number;
+  duration: number;
+  status: 'planning' | 'progress' | 'review' | 'completed';
+  assignee: string;
+  assigneeAvatar?: string;
 }
 
-interface TeamMember {
+interface TaskGroup {
   id: string;
-  name: string;
-  position: string;
-  avatar: string;
-  tasks: Task[];
-  projects: string[];
-  availability: string;
+  title: string;
+  activities: Activity[];
 }
 
 interface GanttChartProps {
-  teamData: TeamMember[];
+  teamData: any[];
 }
 
 const GanttChart: React.FC<GanttChartProps> = ({ teamData }) => {
-  // Get all tasks with enhanced timeline data
-  const getAllTasksWithTimeline = () => {
-    const today = new Date();
-    const tasks: Array<Task & { 
-      memberName: string; 
-      memberAvatar: string; 
-      startDate: Date;
-      endDate: Date;
-      progress: number;
-      position: number;
-    }> = [];
-    
-    teamData.forEach((member, memberIndex) => {
-      member.tasks.forEach((task, taskIndex) => {
-        const endDate = new Date(task.dueDate);
-        // Assume tasks start 7 days before due date for demo purposes
-        const startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 7);
-        
-        // Calculate progress based on status
-        let progress = 0;
-        if (task.status === 'completed') progress = 100;
-        else if (task.status === 'progress') progress = 60;
-        else progress = 0;
-        
-        tasks.push({
-          ...task,
-          memberName: member.name,
-          memberAvatar: member.avatar,
-          startDate,
-          endDate,
-          progress,
-          position: memberIndex * 3 + taskIndex // For vertical positioning
-        });
-      });
-    });
-    
-    return tasks.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  };
+  // Generate sample data matching the reference image
+  const taskGroups: TaskGroup[] = [
+    {
+      id: '1',
+      title: 'UI/UX Design',
+      activities: [
+        { id: '1-1', title: 'User Research', startWeek: 0, duration: 2, status: 'completed', assignee: 'EM' },
+        { id: '1-2', title: 'Wireframing', startWeek: 1, duration: 3, status: 'progress', assignee: 'EM' },
+        { id: '1-3', title: 'Prototyping', startWeek: 3, duration: 4, status: 'planning', assignee: 'EM' }
+      ]
+    },
+    {
+      id: '2',
+      title: 'Backend Development',
+      activities: [
+        { id: '2-1', title: 'API Design', startWeek: 2, duration: 2, status: 'completed', assignee: 'AL' },
+        { id: '2-2', title: 'Database Setup', startWeek: 3, duration: 3, status: 'progress', assignee: 'AL' },
+        { id: '2-3', title: 'Authentication', startWeek: 5, duration: 2, status: 'planning', assignee: 'MI' }
+      ]
+    },
+    {
+      id: '3',
+      title: 'Frontend Development',
+      activities: [
+        { id: '3-1', title: 'Component Library', startWeek: 2, duration: 1, status: 'completed', assignee: 'MI' },
+        { id: '3-2', title: 'Main Dashboard', startWeek: 4, duration: 3, status: 'progress', assignee: 'MI' },
+        { id: '3-3', title: 'User Interface', startWeek: 6, duration: 4, status: 'planning', assignee: 'MI' },
+        { id: '3-4', title: 'Integration Testing', startWeek: 8, duration: 2, status: 'planning', assignee: 'LI' }
+      ]
+    }
+  ];
 
-  // Generate timeline dates (showing 3 weeks)
-  const generateTimelineDates = () => {
-    const dates = [];
+  // Generate weeks
+  const generateWeeks = () => {
+    const weeks = [];
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 7); // Start a week ago
+    startDate.setDate(startDate.getDate() - startDate.getDay()); // Start from Monday
     
-    for (let i = 0; i < 21; i++) { // 3 weeks
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      dates.push(date);
+    for (let i = 0; i < 12; i++) {
+      const weekStart = new Date(startDate);
+      weekStart.setDate(startDate.getDate() + (i * 7));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      weeks.push({
+        start: weekStart,
+        end: weekEnd,
+        label: `${weekStart.toLocaleDateString('en', { month: 'short' })} ${weekStart.getDate()}-${weekEnd.getDate()}`
+      });
     }
-    return dates;
+    return weeks;
   };
 
-  const getStatusColor = (status: Task['status']) => {
+  const getStatusColor = (status: Activity['status']) => {
     switch (status) {
       case 'completed':
-        return 'bg-status-completed';
+        return 'bg-blue-500';
       case 'progress':
-        return 'bg-status-progress';
-      case 'todo':
-        return 'bg-status-todo';
+        return 'bg-purple-500';
+      case 'review':
+        return 'bg-pink-500';
+      case 'planning':
+        return 'bg-red-300';
       default:
-        return 'bg-muted';
+        return 'bg-gray-300';
     }
   };
 
-  const getStatusIcon = (status: Task['status']) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle2 className="h-3 w-3" />;
-      case 'progress':
-        return <Timer className="h-3 w-3" />;
-      case 'todo':
-        return <Circle className="h-3 w-3" />;
-      default:
-        return <Circle className="h-3 w-3" />;
-    }
-  };
-
-  // Calculate position and width of task bars in the timeline
-  const getTaskBarStyle = (startDate: Date, endDate: Date, timelineDates: Date[]) => {
-    const timelineStart = timelineDates[0];
-    const timelineEnd = timelineDates[timelineDates.length - 1];
-    const totalDays = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-    
-    const taskStartDays = Math.max(0, Math.ceil((startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
-    const taskDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    const leftPercent = (taskStartDays / totalDays) * 100;
-    const widthPercent = (taskDurationDays / totalDays) * 100;
-    
-    return {
-      left: `${leftPercent}%`,
-      width: `${Math.max(widthPercent, 2)}%` // Minimum 2% width for visibility
-    };
-  };
-
-  const allTasks = getAllTasksWithTimeline();
-  const timelineDates = generateTimelineDates();
-  const today = new Date();
+  const weeks = generateWeeks();
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
-          Gantt Chart - Project Timeline
+          Project Gantt Chart
         </CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <div className="min-w-[800px]">
-          {/* Timeline Header - Dates */}
+        <div className="min-w-[1200px]">
+          {/* Timeline Header */}
           <div className="flex mb-4">
-            <div className="w-64 flex-shrink-0"></div> {/* Space for task info */}
-            <div className="flex-1 grid grid-cols-21 gap-1">
-              {timelineDates.map((date, index) => (
-                <div key={index} className="text-xs text-center p-1">
-                  <div className="font-medium">{date.getDate()}</div>
-                  <div className="text-muted-foreground">
-                    {date.toLocaleDateString('en', { month: 'short' })}
+            <div className="w-64 flex-shrink-0"></div>
+            <div className="flex-1 grid grid-cols-12 gap-1">
+              {weeks.map((week, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-sm font-medium mb-2 text-muted-foreground">
+                    {week.label}
+                  </div>
+                  <div className="grid grid-cols-5 gap-px">
+                    {['M', 'T', 'W', 'T', 'F'].map((day, dayIndex) => (
+                      <div key={dayIndex} className="text-xs text-center py-1 bg-muted/30 text-muted-foreground">
+                        {day}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
+            <div className="w-16 flex-shrink-0"></div>
           </div>
 
-          {/* Today indicator line */}
-          <div className="relative mb-4">
-            <div className="flex">
-              <div className="w-64 flex-shrink-0"></div>
-              <div className="flex-1 relative">
-                {(() => {
-                  const todayIndex = timelineDates.findIndex(date => 
-                    date.toDateString() === today.toDateString()
-                  );
-                  if (todayIndex >= 0) {
-                    const leftPercent = (todayIndex / timelineDates.length) * 100;
-                    return (
-                      <div 
-                        className="absolute top-0 bottom-0 w-0.5 bg-destructive z-10"
-                        style={{ left: `${leftPercent}%` }}
-                      >
-                        <div className="absolute -top-2 -left-6 text-xs text-destructive font-medium">
-                          Today
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-            </div>
-          </div>
-
-          {/* Task Rows */}
-          <div className="space-y-3">
-            {allTasks.map((task) => {
-              const barStyle = getTaskBarStyle(task.startDate, task.endDate, timelineDates);
-              
-              return (
-                <div key={task.id} className="flex items-center">
-                  {/* Task Info */}
-                  <div className="w-64 flex-shrink-0 flex items-center gap-3 pr-4">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={task.memberAvatar} alt={task.memberName} />
-                      <AvatarFallback className="text-xs">
-                        {task.memberName.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{task.title}</div>
-                      <div className="text-xs text-muted-foreground truncate">{task.memberName}</div>
-                      <div className="flex items-center gap-1 mt-1">
-                        {getStatusIcon(task.status)}
-                        <span className="text-xs">{task.status}</span>
-                      </div>
+          {/* Task Groups */}
+          <div className="space-y-6">
+            {taskGroups.map((taskGroup) => (
+              <div key={taskGroup.id} className="space-y-2">
+                {/* Task Group Header */}
+                <div className="flex">
+                  <div className="w-64 flex-shrink-0">
+                    <div className="bg-foreground text-background px-3 py-2 font-semibold text-sm">
+                      {taskGroup.title}
                     </div>
                   </div>
-
-                  {/* Gantt Bar */}
-                  <div className="flex-1 relative h-8">
-                    <div className="absolute inset-0 bg-muted/20 rounded"></div>
-                    <div 
-                      className={`absolute h-full rounded ${getStatusColor(task.status)} opacity-80 hover:opacity-100 transition-opacity cursor-pointer`}
-                      style={barStyle}
-                    >
-                      {/* Progress indicator */}
-                      <div 
-                        className="h-full bg-white/30 rounded-l"
-                        style={{ width: `${task.progress}%` }}
-                      ></div>
-                      
-                      {/* Task label */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-medium text-white drop-shadow-sm truncate px-2">
-                          {task.progress}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <div className="flex-1"></div>
+                  <div className="w-16 flex-shrink-0"></div>
                 </div>
-              );
-            })}
+
+                {/* Activities */}
+                {taskGroup.activities.map((activity) => (
+                  <div key={activity.id} className="flex items-center">
+                    {/* Activity Name */}
+                    <div className="w-64 flex-shrink-0 pl-4 pr-4">
+                      <div className="text-sm text-muted-foreground truncate">
+                        {activity.title}
+                      </div>
+                    </div>
+
+                    {/* Gantt Timeline */}
+                    <div className="flex-1 relative h-8">
+                      <div className="absolute inset-0 grid grid-cols-12 gap-1">
+                        {weeks.map((_, weekIndex) => (
+                          <div key={weekIndex} className="bg-muted/10 border-r border-muted/20"></div>
+                        ))}
+                      </div>
+                      
+                      {/* Activity Bar */}
+                      <div 
+                        className={`absolute h-6 top-1 rounded ${getStatusColor(activity.status)} opacity-80 hover:opacity-100 transition-opacity cursor-pointer`}
+                        style={{
+                          left: `${(activity.startWeek / 12) * 100}%`,
+                          width: `${(activity.duration / 12) * 100}%`
+                        }}
+                      ></div>
+                    </div>
+
+                    {/* Assignee */}
+                    <div className="w-16 flex-shrink-0 flex justify-center">
+                      <div className="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center text-xs font-medium text-purple-800">
+                        {activity.assignee}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
 
-          {allTasks.length === 0 && (
+          {taskGroups.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No tasks to display in timeline</p>
