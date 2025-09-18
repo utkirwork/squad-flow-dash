@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      gridTemplateColumns: {
+        '21': 'repeat(21, minmax(0, 1fr))',
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -54,6 +57,10 @@ export default {
           "progress-foreground": "hsl(var(--status-progress-foreground))",
           completed: "hsl(var(--status-completed))",
           "completed-foreground": "hsl(var(--status-completed-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
         dashboard: {
           sidebar: "hsl(var(--dashboard-sidebar))",

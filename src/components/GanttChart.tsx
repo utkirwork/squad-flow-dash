@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Timer, Circle, Calendar } from 'lucide-react';
+import { Timer, Circle, Calendar, CheckCircle2 } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -27,45 +27,77 @@ interface GanttChartProps {
 }
 
 const GanttChart: React.FC<GanttChartProps> = ({ teamData }) => {
-  // Get uncompleted tasks with timeline data
-  const getUncompletedTasks = () => {
+  // Get all tasks with enhanced timeline data
+  const getAllTasksWithTimeline = () => {
     const today = new Date();
-    const tasks: Array<Task & { memberName: string; memberAvatar: string; daysUntilDue: number; isOverdue: boolean }> = [];
+    const tasks: Array<Task & { 
+      memberName: string; 
+      memberAvatar: string; 
+      startDate: Date;
+      endDate: Date;
+      progress: number;
+      position: number;
+    }> = [];
     
-    teamData.forEach(member => {
-      member.tasks
-        .filter(task => task.status !== 'completed')
-        .forEach(task => {
-          const dueDate = new Date(task.dueDate);
-          const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          const isOverdue = daysUntilDue < 0;
-          
-          tasks.push({
-            ...task,
-            memberName: member.name,
-            memberAvatar: member.avatar,
-            daysUntilDue,
-            isOverdue
-          });
+    teamData.forEach((member, memberIndex) => {
+      member.tasks.forEach((task, taskIndex) => {
+        const endDate = new Date(task.dueDate);
+        // Assume tasks start 7 days before due date for demo purposes
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - 7);
+        
+        // Calculate progress based on status
+        let progress = 0;
+        if (task.status === 'completed') progress = 100;
+        else if (task.status === 'progress') progress = 60;
+        else progress = 0;
+        
+        tasks.push({
+          ...task,
+          memberName: member.name,
+          memberAvatar: member.avatar,
+          startDate,
+          endDate,
+          progress,
+          position: memberIndex * 3 + taskIndex // For vertical positioning
         });
+      });
     });
     
-    return tasks.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    return tasks.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  };
+
+  // Generate timeline dates (showing 3 weeks)
+  const generateTimelineDates = () => {
+    const dates = [];
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7); // Start a week ago
+    
+    for (let i = 0; i < 21; i++) { // 3 weeks
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
   };
 
   const getStatusColor = (status: Task['status']) => {
     switch (status) {
+      case 'completed':
+        return 'bg-status-completed';
       case 'progress':
-        return 'bg-status-progress text-status-progress-foreground';
+        return 'bg-status-progress';
       case 'todo':
-        return 'bg-status-todo text-status-todo-foreground';
+        return 'bg-status-todo';
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-muted';
     }
   };
 
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
+      case 'completed':
+        return <CheckCircle2 className="h-3 w-3" />;
       case 'progress':
         return <Timer className="h-3 w-3" />;
       case 'todo':
@@ -75,109 +107,136 @@ const GanttChart: React.FC<GanttChartProps> = ({ teamData }) => {
     }
   };
 
-  const getTimelineBar = (daysUntilDue: number, isOverdue: boolean) => {
-    const maxDays = 15; // Show timeline for next 15 days
-    const width = Math.min(Math.abs(daysUntilDue), maxDays) * (100 / maxDays);
+  // Calculate position and width of task bars in the timeline
+  const getTaskBarStyle = (startDate: Date, endDate: Date, timelineDates: Date[]) => {
+    const timelineStart = timelineDates[0];
+    const timelineEnd = timelineDates[timelineDates.length - 1];
+    const totalDays = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (isOverdue) {
-      return `bg-destructive w-full`;
-    } else if (daysUntilDue <= 3) {
-      return `bg-warning w-[${Math.max(width, 20)}%]`;
-    } else {
-      return `bg-primary w-[${width}%]`;
-    }
+    const taskStartDays = Math.max(0, Math.ceil((startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
+    const taskDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const leftPercent = (taskStartDays / totalDays) * 100;
+    const widthPercent = (taskDurationDays / totalDays) * 100;
+    
+    return {
+      left: `${leftPercent}%`,
+      width: `${Math.max(widthPercent, 2)}%` // Minimum 2% width for visibility
+    };
   };
 
-  const uncompletedTasks = getUncompletedTasks();
+  const allTasks = getAllTasksWithTimeline();
+  const timelineDates = generateTimelineDates();
+  const today = new Date();
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
-          Task Timeline - Uncompleted Tasks
+          Gantt Chart - Project Timeline
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Timeline Header */}
-          <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium border-b pb-2">
-            <div className="col-span-3">Task & Assignee</div>
-            <div className="col-span-2">Project</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-2">Due Date</div>
-            <div className="col-span-3">Timeline</div>
+      <CardContent className="overflow-x-auto">
+        <div className="min-w-[800px]">
+          {/* Timeline Header - Dates */}
+          <div className="flex mb-4">
+            <div className="w-64 flex-shrink-0"></div> {/* Space for task info */}
+            <div className="flex-1 grid grid-cols-21 gap-1">
+              {timelineDates.map((date, index) => (
+                <div key={index} className="text-xs text-center p-1">
+                  <div className="font-medium">{date.getDate()}</div>
+                  <div className="text-muted-foreground">
+                    {date.toLocaleDateString('en', { month: 'short' })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Today indicator line */}
+          <div className="relative mb-4">
+            <div className="flex">
+              <div className="w-64 flex-shrink-0"></div>
+              <div className="flex-1 relative">
+                {(() => {
+                  const todayIndex = timelineDates.findIndex(date => 
+                    date.toDateString() === today.toDateString()
+                  );
+                  if (todayIndex >= 0) {
+                    const leftPercent = (todayIndex / timelineDates.length) * 100;
+                    return (
+                      <div 
+                        className="absolute top-0 bottom-0 w-0.5 bg-destructive z-10"
+                        style={{ left: `${leftPercent}%` }}
+                      >
+                        <div className="absolute -top-2 -left-6 text-xs text-destructive font-medium">
+                          Today
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
           </div>
 
           {/* Task Rows */}
           <div className="space-y-3">
-            {uncompletedTasks.map((task) => (
-              <div key={task.id} className="grid grid-cols-12 gap-2 items-center p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                {/* Task & Assignee */}
-                <div className="col-span-3 flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={task.memberAvatar} alt={task.memberName} />
-                    <AvatarFallback className="text-xs">
-                      {task.memberName.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-medium text-sm truncate">{task.title}</div>
-                    <div className="text-xs text-muted-foreground">{task.memberName}</div>
-                  </div>
-                </div>
-
-                {/* Project */}
-                <div className="col-span-2">
-                  <div className="text-xs bg-muted px-2 py-1 rounded truncate">
-                    {task.project}
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div className="col-span-2">
-                  <Badge className={`${getStatusColor(task.status)} text-xs flex items-center gap-1 w-fit`}>
-                    {getStatusIcon(task.status)}
-                    <span className="capitalize">{task.status === 'progress' ? 'In Progress' : 'To Do'}</span>
-                  </Badge>
-                </div>
-
-                {/* Due Date */}
-                <div className="col-span-2">
-                  <div className={`text-sm ${task.isOverdue ? 'text-destructive font-medium' : task.daysUntilDue <= 3 ? 'text-warning font-medium' : 'text-foreground'}`}>
-                    {task.dueDate}
-                  </div>
-                  <div className={`text-xs ${task.isOverdue ? 'text-destructive' : task.daysUntilDue <= 3 ? 'text-warning' : 'text-muted-foreground'}`}>
-                    {task.isOverdue 
-                      ? `${Math.abs(task.daysUntilDue)} days overdue`
-                      : task.daysUntilDue === 0 
-                        ? 'Due today'
-                        : `${task.daysUntilDue} days left`
-                    }
-                  </div>
-                </div>
-
-                {/* Timeline Bar */}
-                <div className="col-span-3">
-                  <div className="relative">
-                    <div className="w-full bg-muted h-6 rounded-lg overflow-hidden">
-                      <div className={`h-full rounded-lg transition-all duration-300 ${getTimelineBar(task.daysUntilDue, task.isOverdue)}`}></div>
+            {allTasks.map((task) => {
+              const barStyle = getTaskBarStyle(task.startDate, task.endDate, timelineDates);
+              
+              return (
+                <div key={task.id} className="flex items-center">
+                  {/* Task Info */}
+                  <div className="w-64 flex-shrink-0 flex items-center gap-3 pr-4">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={task.memberAvatar} alt={task.memberName} />
+                      <AvatarFallback className="text-xs">
+                        {task.memberName.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{task.title}</div>
+                      <div className="text-xs text-muted-foreground truncate">{task.memberName}</div>
+                      <div className="flex items-center gap-1 mt-1">
+                        {getStatusIcon(task.status)}
+                        <span className="text-xs">{task.status}</span>
+                      </div>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-medium text-white drop-shadow-sm">
-                        {task.isOverdue ? 'OVERDUE' : task.daysUntilDue <= 3 ? 'URGENT' : `${task.daysUntilDue}d`}
-                      </span>
+                  </div>
+
+                  {/* Gantt Bar */}
+                  <div className="flex-1 relative h-8">
+                    <div className="absolute inset-0 bg-muted/20 rounded"></div>
+                    <div 
+                      className={`absolute h-full rounded ${getStatusColor(task.status)} opacity-80 hover:opacity-100 transition-opacity cursor-pointer`}
+                      style={barStyle}
+                    >
+                      {/* Progress indicator */}
+                      <div 
+                        className="h-full bg-white/30 rounded-l"
+                        style={{ width: `${task.progress}%` }}
+                      ></div>
+                      
+                      {/* Task label */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-medium text-white drop-shadow-sm truncate px-2">
+                          {task.progress}%
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {uncompletedTasks.length === 0 && (
+          {allTasks.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>All tasks are completed! Great work! 🎉</p>
+              <p>No tasks to display in timeline</p>
             </div>
           )}
         </div>
